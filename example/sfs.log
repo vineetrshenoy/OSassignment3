@@ -1,0 +1,75 @@
+
+sfs_init()
+    conn:
+    proto_major = 7
+    proto_minor = 23
+    async_read = 1
+    max_write = 131072
+    max_readahead = 131072
+    capable = 00000ffb
+    want = 00000010
+    context:
+    fuse = 01a314f0
+    uid = 0
+    gid = 0
+    pid = 0
+    private_data = 01a31010
+    logfile = 01a31030
+    diskfile = /home/vshenoy/Rutgers/assignment3/testfsfile
+    umask = 00000
+
+sfs_getattr(path="/.xdg-volume-info", statbuf=0x281c0c20)
+
+sfs_opendir(path="/", fi=0x279bfc50)
+
+sfs_getattr(path="/.Trash", statbuf=0x271bec20)
+
+sfs_getattr(path="/autorun.inf", statbuf=0x281c0c20)
+
+sfs_opendir(path="/", fi=0x279bfc50)
+
+sfs_getattr(path="/.Trash-1000", statbuf=0x281c0c20)
+
+sfs_opendir(path="/", fi=0x279bfc50)
+
+sfs_opendir(path="/", fi=0x281c0c50)
+
+sfs_opendir(path="/", fi=0x271bec50)
+
+sfs_opendir(path="/", fi=0x269bdc50)
+
+sfs_opendir(path="/", fi=0x279bfc50)
+
+sfs_opendir(path="/", fi=0x271bec50)
+
+sfs_opendir(path="/", fi=0x271bec50)
+
+sfs_opendir(path="/", fi=0x279bfc50)
+
+sfs_opendir(path="/", fi=0x279bfc50)
+
+sfs_opendir(path="/", fi=0x281c0c50)
+
+sfs_opendir(path="/", fi=0x281c0c50)
+
+sfs_opendir(path="/", fi=0x269bdc50)
+
+sfs_opendir(path="/", fi=0x271bec50)
+
+sfs_opendir(path="/", fi=0x279bfc50)
+
+sfs_opendir(path="/", fi=0x281c0c50)
+
+sfs_opendir(path="/", fi=0x269bdc50)
+
+sfs_opendir(path="/", fi=0x271bec50)
+
+sfs_opendir(path="/", fi=0x279bfc50)
+
+sfs_opendir(path="/", fi=0x281c0c50)
+
+sfs_opendir(path="/", fi=0x269bdc50)
+
+sfs_getattr(path="/autorun.inf", statbuf=0x271bec20)
+
+sfs_destroy(userdata=0x01a31010)
