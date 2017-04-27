@@ -21,6 +21,7 @@
 #define _XOPEN_SOURCE 500
 
 // maintain bbfs state in here
+#include <math.h>
 #include <limits.h>
 #include <stdio.h>
 #include <math.h>
@@ -29,6 +30,9 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <dirent.h>
+#include <time.h>
+#include <fuse.h>
 
 
 #define BLOCK_SIZE 512
@@ -37,6 +41,10 @@
 #define INODES_PER_BLOCK 8
 #define ZERO_INDEX_BITS 7
 #define VALUE 513
+#ifdef NAME_MAX
+#undef NAME_MAX
+#endif
+#define NAME_MAX 252
 
 typedef struct{
 
@@ -82,7 +90,18 @@ typedef struct{
 
 }super_block;
 
+typedef struct{
 
+	char filepath[508];
+	int inode;
+
+}filepath_block;
+
+typedef struct{
+
+	struct dirent list[2];
+
+}directory_block;
 
 int get_metadata_info(int total_size, metadata_info * info);
 int check_inode_status(int inode_number);

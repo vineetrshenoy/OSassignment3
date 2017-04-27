@@ -241,6 +241,76 @@ void set_inode(int inode_number, inode node){
   
 }
 
+/*
+  Gets the number of directories in a file path
+
+  INPUT: The file path
+  OUTPUT: the number of different portions of the filepath
+
+*/
+
+int get_num_dirs(char * filepath){
+  int length = strlen(filepath);
+  char slash = 47;
+  int i, count;
+  count = 0;
+  for (i = 0; i < length; i++){
+    if (filepath[i] == slash)
+      count++;
+  }
+  return count;
+}
+
+/*
+  Get each file path returned as a char *
+
+  INPUT: The file path
+  OUTPUT: A char ** that points to each string in the filepath
+
+*/
+
+
+char ** parsePath(char * filepath){
+
+  int length = strlen(filepath);
+  int i, count;
+  char slash = 47;
+  count = 0;
+
+  //Figures out how many "/" are present -- stores in count
+  for (i = 0; i < length; i++){
+    if (filepath[i] == slash)
+      count++;
+  }
+  
+
+  int * indices = (int * ) malloc ((count + 1) * sizeof(int)); //stores the index of each slash
+  int j = 0;
+  for (i = 0; i < length; i++){
+
+    if (filepath[i] == slash){
+      indices[j] = i;
+      j++;
+    }
+
+    
+  }
+  indices[count] = length; 
+
+  char ** strings = (char **) malloc(count * sizeof(char *)); //MUST FREE THIS LATER
+
+  for (i = 0; i < count; i++){
+    int size = (indices[i + 1] - indices[i]);
+    strings[i] = (char *) malloc(sizeof(char) * size);
+    strncpy(strings[i], (filepath + indices[i] + 1), (size - 1));
+    
+  }
+  free(indices);
+  
+  return strings;
+
+}
+
 ///////////////////////////////////////////////////////////
 //
 // Prototypes for all these functions, and the C-style comments,
