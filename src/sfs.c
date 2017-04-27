@@ -992,6 +992,18 @@ int sfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
 {
     int retstat = 0;
     
+    int pathInodeNum = findInode(path);
+    inode pathInode = get_inode(pathInodeNum);
+    int i = 0;
+    directory_block dblock;
+    int fillerReturn;
+    while (pathInode.direct_ptrs[i]) {
+      block_read(pathInode.direct_ptrs[i], &dblock);
+      fillerReturn = filler(buf, dblock.list[0].d_name, NULL, sizeof(struct dirent));
+      if (fillerReturn != 0) {
+        return retstat;
+      }
+    }
     
     return retstat;
 }
