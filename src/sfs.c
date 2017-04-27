@@ -252,7 +252,7 @@ void set_inode(int inode_number, inode node){
 
 */
 
-int get_num_dirs(char * filepath){
+int get_num_dirs(const char * filepath){
   int length = strlen(filepath);
   char slash = 47;
   int i, count;
@@ -273,7 +273,7 @@ int get_num_dirs(char * filepath){
 */
 
 
-char ** parsePath(char * filepath){
+char ** parsePath(const char * filepath){
 
   int length = strlen(filepath);
   int i, count;
@@ -321,7 +321,7 @@ char ** parsePath(char * filepath){
   OUTPUT: An integer representing a inode
 
 */
-int findInode(char *path) {
+int findInode(const char *path) {
 
   super_block sblock;
   block_read(0, &sblock);
@@ -553,8 +553,48 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
     int retstat = 0;
     log_msg("\nsfs_create(path=\"%s\", mode=0%03o, fi=0x%08x)\n",
-	    path, mode, fi);
+      path, mode, fi);
     
+    super_block sblock;
+    block_read(0, &sblock);
+    int totalInodes = sblock.list[0].total_inodes;
+    int totalDatablocks = sblock.list[0].dataregion_blocks;
+    int inodeNum = findInode(path);
+    // file does not exist
+    if (inodeNum > totalInodes) {
+      int i, inodeStatus, datablockStatus;
+      inode node;
+      filepath_block fblock;
+      // find available inode
+      for (i = 0; i < totalInodes; i++) {
+        inodeStatus = check_inode_status(i);
+        // inode is available
+        if (!inodeStatus) {
+          set_inode_status(i, 1);
+          node.size = 0;
+          set_inode(i, node);
+          inodeNum = i;
+          break;
+        }
+      }
+      // find available datablock
+      for (i = 0; i < totalDatablocks; i++) {
+        datablockStatus = check_dataregion_status(i);
+        if(!datablockStatus) {
+          int datablockOffset = sblock.list[0].dataregion_blocks_start + i;
+          int numOfDirs = get_num_dirs(path);
+          char ** fldrs = parsePath(path);
+          int j = 0;
+          while (fldrs[numOfDirs - 1][j]) {
+            fblock.filepath[j] = fldrs[numOfDirs - 1][j];
+          }
+          fblock.inode = inodeNum;
+          block_write(datablockOffset + i, &fblock);
+          break;
+        }
+      }
+    }
+    sfs_open(path, fi);
     
     return retstat;
 }
