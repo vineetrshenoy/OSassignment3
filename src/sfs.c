@@ -481,10 +481,58 @@ void sfs_destroy(void *userdata)
 int sfs_getattr(const char *path, struct stat *statbuf)
 {
     int retstat = 0;
+    char slash = 47;
     char fpath[PATH_MAX];
     
     log_msg("\nsfs_getattr(path=\"%s\", statbuf=0x%08x)\n",
-	  path, statbuf);
+    path, statbuf);
+
+    memset(statbuf, 0, sizeof(struct stat)); // initialize buffer
+    statbuf->st_dev = 0;
+    statbuf->st_blksize = 0;
+    statbuf->st_ino = 0;
+    memset(&fpath, '?', PATH_MAX);  // initialize fpath before copying path into it so the final character can be found
+    int i = 0;
+    while (path[i]) {
+      fpath[i] = path[i];
+      i++;
+    }
+    char finalChar;
+    for (i = 0; i < PATH_MAX; i++) {
+      if (fpath[i] == '?') {
+        finalChar = fpath[i - 1];
+        break;
+      }
+    }
+
+    if (finalChar == slash) {
+      statbuf->st_mode = S_IFDIR | S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
+      statbuf->st_nlink = 2;
+    }
+    else {
+      statbuf->st_mode = S_IFREG | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+      statbuf->st_nlink = 1;
+    }
+
+    statbuf->st_uid = getuid();
+    statbuf->st_gid = getgid();
+    statbuf->st_rdev = 0;
+    super_block sblock;
+    block_read(0, &sblock);
+    int inodeNum = findInode(path);
+    int inodeBlockOffset = sblock.list[0].inode_blocks_start;
+    int inodeBlock = inodeNum/8;
+    int inodeOffset = inodeNum - inodeBlock*8;
+    inode_block iblock;
+    block_read(inodeBlockOffset + inodeBlock, &iblock);
+    statbuf->st_size = iblock.list[inodeOffset].size;
+    statbuf->st_blocks = statbuf->st_size/BLOCK_SIZE;
+    if (statbuf->st_size%8 != 0) {
+      statbuf->st_blocks += 1;
+    }
+    statbuf->st_atime = time(NULL);
+    statbuf->st_mtime = time(NULL);
+    statbuf->st_ctime = time(NULL);
     
     return retstat;
 }
