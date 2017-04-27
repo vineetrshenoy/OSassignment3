@@ -455,6 +455,30 @@ int findFilepathBlock(const char *path) {
   return fblockNum;
 }
 
+int find_free_datablock(){
+  int i;
+  int totalDatablocks = info.dataregion_blocks;
+  for (i = 0; i < totalDatablocks; i++){
+    if (check_dataregion_status(i) == 0)
+      return i;
+    
+  }
+
+  return -1;
+}
+
+int find_free_inode(){
+  int i;
+  int totalInodes = info.total_inodes;
+  for (i = 0; i < totalInodes; i++){
+    if (check_inode_status(i) == 0)
+      return i;
+    
+  }
+
+  return -1;
+}
+
 ///////////////////////////////////////////////////////////
 //
 // Prototypes for all these functions, and the C-style comments,
@@ -551,6 +575,7 @@ void *sfs_init(struct fuse_conn_info *conn)
 void sfs_destroy(void *userdata)
 {
     log_msg("\nsfs_destroy(userdata=0x%08x)\n", userdata);
+    disk_close();
 }
 
 /** Get file attributes.
@@ -715,8 +740,12 @@ int sfs_open(const char *path, struct fuse_file_info *fi)
 {
     int retstat = 0;
     log_msg("\nsfs_open(path\"%s\", fi=0x%08x)\n",
-	    path, fi);
+      path, fi);
 
+    int inodeNum = findInode(path);
+    if (inodeNum > info.total_inodes) {
+      return ENOENT;
+    }
     
     return retstat;
 }
