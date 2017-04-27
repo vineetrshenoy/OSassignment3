@@ -851,8 +851,75 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
 {
     int retstat = 0;
     log_msg("\nsfs_write(path=\"%s\", buf=0x%08x, size=%d, offset=%lld, fi=0x%08x)\n",
-	    path, buf, size, offset, fi);
+      path, buf, size, offset, fi);
     
+    if (offset >= 12*BLOCK_SIZE) {
+      return 0;
+    }
+    if (offset + size > 12*BLOCK_SIZE) {
+      size = 12*BLOCK_SIZE - offset;
+    }
+    int inodeNum = findInode(path);
+    inode node = get_inode(inodeNum);
+    int writeBlockNum = offset/BLOCK_SIZE;
+    if (offset%BLOCK_SIZE != 0) {
+      writeBlockNum++;
+    }
+    int writeOffset = offset%BLOCK_SIZE;
+    int currentNumOfBlocks = 0;
+    int i;
+    int numOfBlocksNeeded = 1;
+    for (i = 0; i < 12; i++) {
+      if (node.direct_ptrs[i] != 0) {
+        currentNumOfBlocks++;
+      }
+    }
+    if (currentNumOfBlocks < writeBlockNum) {
+      while (currentNumOfBlocks != writeBlockNum) {
+        currentNumOfBlocks++;
+        node.direct_ptrs[currentNumOfBlocks] = find_free_datablock();
+        set_dataregion_status(node.direct_ptrs[currentNumOfBlocks], 1);
+      }
+    }
+    if (size > BLOCK_SIZE - writeOffset) {
+      numOfBlocksNeeded = (size + writeOffset)/BLOCK_SIZE;
+      if ((size + writeOffset)%BLOCK_SIZE != 0) {
+        numOfBlocksNeeded++;
+      }
+      for (i = 0; i < numOfBlocksNeeded; i++) {
+        currentNumOfBlocks++;
+        node.direct_ptrs[currentNumOfBlocks] = find_free_datablock();
+        set_dataregion_status(node.direct_ptrs[currentNumOfBlocks], 1);
+      }
+    }
+    node.size = (currentNumOfBlocks - 1)*BLOCK_SIZE;
+    if (size%BLOCK_SIZE != 0) {
+      node.size += size%BLOCK_SIZE;
+    }
+    else {
+      node.size += BLOCK_SIZE;
+    }
+    char buffer[BLOCK_SIZE];
+    int unwrittenSize = size;
+    for (i = 0; i < numOfBlocksNeeded; i++) {
+      block_read(node.direct_ptrs[writeBlockNum + i], &buffer);
+      if (size <= BLOCK_SIZE - writeOffset) {
+        int j;
+        for (j = writeOffset; j < writeOffset + unwrittenSize; j++) {
+          buffer[j] = buf[j - writeOffset];
+        }
+        unwrittenSize = 0;
+      }
+      else {
+        int j;
+        for (j = writeOffset; j < BLOCK_SIZE; j++) {
+          buffer[j] = buf[size - unwrittenSize + j - writeOffset];
+        }
+        unwrittenSize -= (BLOCK_SIZE - writeOffset);
+      }
+      block_write(node.direct_ptrs[writeBlockNum + i], &buffer);
+    }
+    retstat = size;
     
     return retstat;
 }
