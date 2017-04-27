@@ -65,8 +65,11 @@ int get_metadata_info(int total_size, metadata_info * info){
   int num_metadata_blocks = metadata_size / (BLOCK_SIZE); //Number of blocks based on size
   num_metadata_blocks = num_metadata_blocks - data_bitmap_blocks - 1; // Total blocks minus data_bitmap_blocks minus superblock
 
-  int inode_bitmap = (num_metadata_blocks / VALUE) + 1;
-  //int inode_bitmap = ceil((double) num_metadata_blocks / VALUE); //gets the number of inodes. See documentation
+  //int inode_bitmap = (num_metadata_blocks / VALUE) + 1;
+  int inode_bitmap =  num_metadata_blocks / VALUE; //gets the number of inodes. See documentation
+  if (inode_bitmap % VALUE != 0){
+    inode_bitmap++;
+  }
   num_metadata_blocks = num_metadata_blocks - inode_bitmap;
 
 
@@ -309,6 +312,66 @@ char ** parsePath(char * filepath){
   
   return strings;
 
+}
+
+/*
+  Finds the inode based on a filepath
+
+  INPUT: The file path
+  OUTPUT: An integer representing a inode
+
+*/
+int findInode(char *path) {
+
+  super_block sblock;
+  block_read(0, &sblock);
+  int dataRegionOffset = sblock.list[0].dataregion_blocks_start;
+  filepath_block rblock;
+  block_read(dataRegionOffset, &rblock);
+  int inodeNum = rblock.inode;
+  int inodeBlock = inodeNum/8;
+  if (inodeNum % 8 != 0){
+    inodeBlock++;
+  }
+  int inodeOffset = inodeNum - (inodeBlock - 1)*8;
+  int numOfDirs = get_num_dirs(path);
+  char ** fldrs = parsePath(filepath);
+  inode_block iblock;
+  filepath_block fblock;
+  int i, j, gotem;
+  inode node;
+  // go through each inode of each folder in the path to find the inode for the filepath
+  for (i = 0; i < numOfDirs; i++) {
+    block_read(inodeBlock, &iblock);
+    node = iblock.list[inodeOffset];
+    gotem = 0;
+    // check each direct_ptr in inode until the correct folder is found
+    for (j = 0; j < 12; j++) {
+      block_read(node.direct_ptrs[j], &fblock);
+      if (strcmp(fblock.filepath, fldrs[i]) == 0) {
+        gotem = 1;
+        break;
+      }
+    }
+    if (gotem == 1) {
+      inodeNum = fblock.inode;
+      if (i == numOfDirs - 1) {
+        break;
+      }
+      inodeBlock = inodeNum/8;
+      if (inodeNum % 8 != 0){
+        inodeBlock++;
+      }
+      inodeOffset = inodeNum - (inodeBlock - 1)*8;
+    }
+    else {
+      // do indirect ptr stuff
+    }
+  }
+  for (i = 0; i < numOfDirs; i++) {
+    free(fldrs[i]);
+  }
+  return inodeNum;
 }
 
 ///////////////////////////////////////////////////////////
