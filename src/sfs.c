@@ -330,7 +330,7 @@ int findInode(const char *path) {
   block_read(dataRegionOffset, &rblock);
   int inodeNum = rblock.inode;
   int inodeBlock = inodeNum/8;
-  if (inodeNum % 8 != 0){
+  if (inodeNum%8 != 0) {
     inodeBlock++;
   }
   int inodeOffset = inodeNum - (inodeBlock - 1)*8;
@@ -348,7 +348,15 @@ int findInode(const char *path) {
     // check each direct_ptr in inode until the correct folder is found
     for (j = 0; j < 12; j++) {
       block_read(node.direct_ptrs[j], &fblock);
-      if (strcmp(fblock.filepath, fldrs[i]) == 0) {
+      int fcheck = 0;
+      int l = 0;
+      while (fldrs[i][l]) {
+        if (fblock.filepath[l] != fldrs[i][l]) {
+          fcheck = 1;
+        }
+        l++;
+      }
+      if (fcheck == 0) {
         gotem = 1;
         break;
       }
@@ -359,7 +367,80 @@ int findInode(const char *path) {
         break;
       }
       inodeBlock = inodeNum/8;
-      if (inodeNum % 8 != 0){
+      if (inodeNum%8 != 0) {
+        inodeBlock++;
+      }
+      inodeOffset = inodeNum - (inodeBlock - 1)*8;
+    }
+    else {
+      // do indirect ptr stuff
+      int k;
+      for (k = 0; k < numOfDirs; k++) {
+        free(fldrs[k]);
+      }
+      return sblock.list[0].inode_blocks*8 + 1;
+    }
+  }
+  for (i = 0; i < numOfDirs; i++) {
+    free(fldrs[i]);
+  }
+  return inodeNum;
+}
+
+/*
+  Finds the filepath block based on a path
+
+  INPUT: The file path
+  OUTPUT: An integer representing a inode
+
+*/
+int findFilepathBlock(const char *path) {
+
+  super_block sblock;
+  block_read(0, &sblock);
+  int dataRegionOffset = sblock.list[0].dataregion_blocks_start;
+  filepath_block rblock;
+  block_read(dataRegionOffset, &rblock);
+  int inodeNum = rblock.inode;
+  int inodeBlock = inodeNum/8;
+  if (inodeNum%8 != 0) {
+    inodeBlock++;
+  }
+  int inodeOffset = inodeNum - (inodeBlock - 1)*8;
+  int numOfDirs = get_num_dirs(path);
+  char ** fldrs = parsePath(filepath);
+  inode_block iblock;
+  filepath_block fblock;
+  int i, j, gotem, fblockNum;
+  inode node;
+  // go through each inode of each folder in the path to find the inode for the filepath
+  for (i = 0; i < numOfDirs; i++) {
+    block_read(inodeBlock, &iblock);
+    node = iblock.list[inodeOffset];
+    gotem = 0;
+    // check each direct_ptr in inode until the correct folder is found
+    for (j = 0; j < 12; j++) {
+      block_read(node.direct_ptrs[j], &fblock);
+      int fcheck = 0;
+      int l = 0;
+      while (fldrs[i][l]) {
+        if (fblock.filepath[l] != fldrs[i][l]) {
+          fcheck = 1;
+        }
+        l++;
+      }
+      if (fcheck == 0) {
+        gotem = 1;
+        break;
+      }
+    }
+    if (gotem == 1) {
+      inodeNum = fblock.inode;
+      if (i == numOfDirs - 1) {
+        break;
+      }
+      inodeBlock = inodeNum/8;
+      if (inodeNum%8 != 0) {
         inodeBlock++;
       }
       inodeOffset = inodeNum - (inodeBlock - 1)*8;
@@ -371,7 +452,7 @@ int findInode(const char *path) {
   for (i = 0; i < numOfDirs; i++) {
     free(fldrs[i]);
   }
-  return inodeNum;
+  return fblockNum;
 }
 
 ///////////////////////////////////////////////////////////
@@ -605,6 +686,17 @@ int sfs_unlink(const char *path)
     int retstat = 0;
     log_msg("sfs_unlink(path=\"%s\")\n", path);
 
+    int inodeNum = findInode(path);
+    int fblockNum = findFilepathBlock(path);
+    inode node = get_inode(inodeNum);
+    int i, direct_ptr;
+    for (i = 0; i < 12; i++) {
+      if (node.direct_ptrs[i] != 0) {
+        set_dataregion_status(node.direct_ptrs[i], 0);
+      }
+    }
+    set_dataregion_status(fblockNum, 0);
+    set_inode_status(inodeNum, 0);
     
     return retstat;
 }
