@@ -378,7 +378,7 @@ int findInode(const char *path) {
       for (k = 0; k < numOfDirs; k++) {
         free(fldrs[k]);
       }
-      return sblock.list[0].inode_blocks*8 + 1;
+      return -1;
     }
   }
   for (i = 0; i < numOfDirs; i++) {
@@ -554,13 +554,15 @@ void *sfs_init(struct fuse_conn_info *conn)
       count++;
     }
 
-    disk_close(filepath);
+    
 
     fprintf(stderr, "in bb-init\n");
     log_msg("\nsfs_init()\n");
     
     log_conn(conn);
     log_fuse_context(fuse_get_context());
+
+    //sfs_create("/.Trash", S_IRWXU, NULL);
 
     return SFS_DATA;
 }
@@ -636,10 +638,11 @@ int sfs_getattr(const char *path, struct stat *statbuf)
     if (statbuf->st_size%8 != 0) {
       statbuf->st_blocks += 1;
     }
+    /*
     statbuf->st_atime = time(NULL);
     statbuf->st_mtime = time(NULL);
     statbuf->st_ctime = time(NULL);
-    
+    */
     return retstat;
 }
 
@@ -667,7 +670,7 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     int totalDatablocks = sblock.list[0].dataregion_blocks;
     int inodeNum = findInode(path);
     // file does not exist
-    if (inodeNum > totalInodes) {
+    if (inodeNum == -1) {
       int i, inodeStatus, datablockStatus;
       inode node;
       filepath_block fblock;
@@ -743,7 +746,10 @@ int sfs_open(const char *path, struct fuse_file_info *fi)
       path, fi);
 
     int inodeNum = findInode(path);
-    if (inodeNum > info.total_inodes) {
+    log_msg("\n The inode number is %d", inodeNum);
+    if (inodeNum == -1) {
+      //fi->flags = fi->flags | O_CREAT;
+      sfs_create(path, S_IRWXU, fi);
       return ENOENT;
     }
     
@@ -991,7 +997,7 @@ int sfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
 	       struct fuse_file_info *fi)
 {
     int retstat = 0;
-    
+    log_msg("\n entering readdir \n");
     int pathInodeNum = findInode(path);
     inode pathInode = get_inode(pathInodeNum);
     int i = 0;
