@@ -526,6 +526,8 @@ void *sfs_init(struct fuse_conn_info *conn)
       block.list[i] = node;
 
     }
+    int jjj = NAME_MAX;
+    log_msg("\n The value of name max is %d", jjj);
 
     fstat(diskfile, &s); //get file information
     get_metadata_info(s.st_size, &info); //gets all the metadata info
